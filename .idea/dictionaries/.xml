@@ -3,10 +3,12 @@
     <words>
       <w>clidx</w>
       <w>clidxs</w>
+      <w>cuda</w>
       <w>dropna</w>
       <w>idxs</w>
       <w>langs</w>
       <w>sents</w>
+      <w>tokenized</w>
       <w>toktok</w>
     </words>
   </dictionary>
