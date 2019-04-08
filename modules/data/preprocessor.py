@@ -144,11 +144,13 @@ class BertNerData(object):
         self.batch_size = batch_size
 
         self.idx2label = idx2label
+        self.label2idx = None
         if idx2label is not None:
             self.label2idx = {label: idx for idx, label in enumerate(idx2label)}
 
         self.idx2cls = idx2cls
         self.is_cls = is_cls
+        self.cls2idx = None
         if is_cls:
             self.cls2idx = {label: idx for idx, label in enumerate(idx2cls)}
 
