@@ -10,7 +10,7 @@ from collections import defaultdict, Counter
 class DataConverter(object):
     def __init__(
             self, root, save_dir_name="processed", annotated_prefix="annotated", raw_prefix="raw",
-            other_cat="O", dropna=False):
+            other_cat="O", dropna=False, clear_cache=True):
         self.root = Path(root)
         self.save_dir_name = save_dir_name
         self.annotated_prefix = annotated_prefix
@@ -19,6 +19,7 @@ class DataConverter(object):
         self.word_tokenize = self.toktok.tokenize
         self.sent_tokenize = tokenize.sent_tokenize
         self.other_cat = other_cat
+        self.clear_cache = clear_cache
         self.dropna = dropna
         self.annotation_conflicts = dict()
         self.annotation_conflicts["interpretation"] = []
@@ -160,14 +161,18 @@ class DataConverter(object):
         sent_tokenize = if_none(sent_tokenize, self.sent_tokenize)
         word_tokenize = if_none(word_tokenize, self.word_tokenize)
         for topic_name in os.listdir(str(root/annotated_prefix)):
-            df = self.prc_topic(
-                root, topic_name, annotated_prefix, raw_prefix,
-                sent_tokenize, word_tokenize, other_cat)
-            if not os.path.exists(str(root/save_dir_name)):
-                os.mkdir(str(root/save_dir_name))
-            if self.dropna:
-                df = df.dropna()
-            df.to_csv(str(root/save_dir_name/topic_name) + ".csv", index=False)
+            save_path = str(root/save_dir_name/topic_name) + ".csv"
+            if self.clear_cache or not os.path.exists(save_path):
+                df = self.prc_topic(
+                    root, topic_name, annotated_prefix, raw_prefix,
+                    sent_tokenize, word_tokenize, other_cat)
+                if not os.path.exists(str(root/save_dir_name)):
+                    os.mkdir(str(root/save_dir_name))
+                if self.dropna:
+                    df = df.dropna()
+                df.to_csv(save_path, index=False)
+            else:
+                df = pd.read_csv(save_path)
             self.stats[topic_name] = self.get_stats(df, other_cat)
             self.res_dfs[topic_name] = df
         return self.res_dfs
