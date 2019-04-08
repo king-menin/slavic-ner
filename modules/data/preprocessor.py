@@ -259,6 +259,9 @@ class BertNerData(object):
         if is_cls and idx2cls is None and os.path.exists(str(idx2cls_path)) and not clear_cache:
             idx2cls = read_json(idx2cls_path)
 
+        config_path = if_none(
+            config_path, os.path.join(dir_config, "data_ner.json") if dir_config is not None else None)
+
         data = cls(bert_vocab_file=bert_vocab_file, idx2label=idx2label, config_path=config_path,
                    tokenizer=tokenizer,
                    bert_model_type=bert_model_type, idx2cls=idx2cls, max_seq_len=max_seq_len,
