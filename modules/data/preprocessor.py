@@ -264,7 +264,8 @@ class BertNerData(object):
         config_path = if_none(
             config_path, os.path.join(dir_config, "data_ner.json") if dir_config is not None else None)
 
-        data = cls(bert_vocab_file=bert_vocab_file, idx2label=idx2label, config_path=config_path,
+        data = cls(bert_vocab_file=bert_vocab_file, train_path=train_path, valid_path=valid_path,
+                   idx2label=idx2label, config_path=config_path,
                    tokenizer=tokenizer,
                    bert_model_type=bert_model_type, idx2cls=idx2cls, max_seq_len=max_seq_len,
                    batch_size=batch_size, is_cls=is_cls,
@@ -361,6 +362,7 @@ class BertNerData(object):
 
                 cur_tokens = tokenizer.tokenize(orig_token)
                 if self.max_seq_len - 1 < len(bert_tokens) + len(cur_tokens):
+                    logging.info("Error max_seq_len of BERT sequence. Sample skipped: {}".format(args))
                     break
 
                 bert_tokens.extend(cur_tokens)
