@@ -76,10 +76,10 @@ class InputFeatures(object):
             self.data.append(cls_idx)
 
 
-class DataLoaderForTrain(DataLoader):
+class NerDataLoader(DataLoader):
 
     def __init__(self, data_set, shuffle, cuda, **kwargs):
-        super(DataLoaderForTrain, self).__init__(
+        super(NerDataLoader, self).__init__(
             dataset=data_set,
             collate_fn=self.collate_fn,
             shuffle=shuffle,
@@ -89,83 +89,22 @@ class DataLoaderForTrain(DataLoader):
 
     def collate_fn(self, data):
         res = []
-        token_ml = max(map(lambda x_: sum(x_.data[1]), data))
-        label_ml = max(map(lambda x_: sum(x_.data[-2]), data))
+        token_ml = max(map(lambda x_: sum(x_.data[0]), data))
         sorted_idx = np.argsort(list(map(lambda x_: sum(x_.data[1]), data)))[::-1]
         for idx in sorted_idx:
             f = data[idx]
             example = []
-            for idx_, x in enumerate(f.data[:-2]):
+            for idx_, x in enumerate(f.data):
                 if isinstance(x, list):
                     x = x[:token_ml]
                 example.append(x)
-            example.append(f.data[-2][:label_ml])
-            example.append(f.data[-1][:label_ml])
             res.append(example)
         res_ = []
         for idx, x in enumerate(zip(*res)):
-            if data[0].meta is not None and idx == 3:
-                res_.append(torch.FloatTensor(x))
-            else:
-                res_.append(torch.LongTensor(x))
+            res_.append(torch.LongTensor(x))
         if self.cuda:
             res_ = [t.cuda() for t in res_]
-        return res_
-
-
-class DataLoaderForPredict(DataLoader):
-
-    def __init__(self, data_set, cuda, **kwargs):
-        super(DataLoaderForPredict, self).__init__(
-            dataset=data_set,
-            collate_fn=self.collate_fn,
-            **kwargs
-        )
-        self.cuda = cuda
-
-    def collate_fn(self, data):
-        res = []
-        token_ml = max(map(lambda x_: sum(x_.data[1]), data))
-        label_ml = max(map(lambda x_: sum(x_.data[-2]), data))
-        sorted_idx = np.argsort(list(map(lambda x_: sum(x_.data[1]), data)))[::-1]
-        for idx in sorted_idx:
-            f = data[idx]
-            example = []
-            for x in f.data[:-2]:
-                if isinstance(x, list):
-                    x = x[:token_ml]
-                example.append(x)
-            example.append(f.data[-2][:label_ml])
-            example.append(f.data[-1][:label_ml])
-            res.append(example)
-        res_ = []
-        for idx, x in enumerate(zip(*res)):
-            if data[0].meta is not None and idx == 3:
-                res_.append(torch.FloatTensor(x))
-            else:
-                res_.append(torch.LongTensor(x))
-        sorted_idx = torch.LongTensor(list(sorted_idx))
-        if self.cuda:
-            res_ = [t.cuda() for t in res_]
-            sorted_idx = sorted_idx.cuda()
         return res_, sorted_idx
-
-
-def get_bert_data_loader_for_predict(path, learner):
-    df = pd.read_csv(path)
-
-    f, label2idx, cls2idx, meta2idx = get_data(
-        df, learner.data.tokenizer,
-        learner.data.label2idx, learner.data.cls2idx,
-        learner.data.meta2idx,
-        learner.data.is_cls,
-        learner.data.is_meta,
-        learner.data.max_seq_len,
-        learner.data.pad)
-    dl = DataLoaderForPredict(
-        f, batch_size=learner.data.batch_size, shuffle=False,
-        cuda=learner.data.use_cuda)
-    return dl
 
 
 class BertNerData(object):
@@ -225,6 +164,7 @@ class BertNerData(object):
 
         self.train_dl = None
         self.valid_dl = None
+        self.test_dl = None
         self.data_columns = data_columns
 
         self.shuffle = shuffle
@@ -244,7 +184,7 @@ class BertNerData(object):
                max_seq_len=424,
                batch_size=16, is_cls=False,
                idx2label_path=None, idx2cls_path=None, pad="<pad>", use_cuda=True,
-               clear_cache=True, data_columns=["0", "1", "2"], shuffle=True):
+               clear_cache=True, data_columns=["0", "1", "2"], shuffle=True, dir_config=None):
         """
         Create or skip data loaders, load or create vocabs.
         DataFrame should has 2 or 3 columns. Structure see in data_columns description.
@@ -288,12 +228,17 @@ class BertNerData(object):
                 data_columns[2] - represent cls column (if is_cls is not None).
         shuffle : bool, optional (default=True)
             Is shuffle data.
+        dir_config : str or None, optional (default=None)
+            Dir for store vocabs if paths is not set.
 
         Returns
         ----------
         data : BertNerData
             Created object of BertNerData.
         """
+        idx2label_path = if_none(
+            idx2label_path, os.path.join(dir_config, "idx2label.json") if dir_config is not None else None)
+
         if idx2label is None and idx2label_path is None:
             raise ValueError("Must set idx2label_path.")
 
@@ -308,7 +253,9 @@ class BertNerData(object):
 
         if idx2label is None and os.path.exists(str(idx2label_path)) and not clear_cache:
             idx2label = read_json(idx2label_path)
-
+        if is_cls:
+            idx2cls_path = if_none(
+                idx2cls_path, os.path.join(dir_config, "idx2cls.json") if dir_config is not None else None)
         if is_cls and idx2cls is None and os.path.exists(str(idx2cls_path)) and not clear_cache:
             idx2cls = read_json(idx2cls_path)
 
@@ -320,37 +267,55 @@ class BertNerData(object):
                    pad=pad, use_cuda=use_cuda, data_columns=data_columns, shuffle=shuffle)
 
         if train_path is not None:
-            train_features = data.load_df(train_path)
-            data.set_train_dl(data.load_dl(train_features))
+            _ = data.load_train_dl(train_path)
 
         if valid_path is not None:
-            valid_features = data.load_df(valid_path)
-            data.set_train_dl(data.load_dl(valid_features))
-
-        idx2label = sorted(data.label2idx, key=lambda x: data.label2idx[x])
+            _ = data.load_valid_dl(valid_path)
 
         if clear_cache:
-            logging.info("Saving vocabs...")
-            save_json(idx2label, idx2label_path)
-            save_json(idx2cls, idx2cls_path)
-            save_json(data.get_config(), config_path)
-
+            data.save_vocabs_and_config()
         return data
 
-    def set_train_dl(self, dl):
-        self.train_dl = dl
+    def save_vocabs_and_config(self, idx2label_path=None, idx2cls_path=None, config_path=None):
+        logging.info("Saving vocabs...")
+        save_json(self.idx2label, idx2label_path)
+        save_json(self.idx2cls, idx2cls_path)
+        save_json(self.get_config(), config_path)
 
-    def set_valid_dl(self, dl):
-        self.valid_dl = dl
-
-    def load_dl(self, features):
+    def load_train_dl(self, features):
         if isinstance(features, str):
-            features = self.load_df(features)
-        return DataLoaderForTrain(
+            features, self.label2idx, self.cls2idx = self.load_df(features)
+        self.train_dl = NerDataLoader(
             features, batch_size=self.batch_size, shuffle=self.shuffle, cuda=self.use_cuda)
 
+        self.idx2label = sorted(self.label2idx, key=lambda x: self.label2idx[x])
+        if self.is_cls:
+            self.idx2cls = sorted(self.cls2idx, key=lambda x: self.cls2idx[x])
+
+        return self.train_dl
+
+    def load_valid_dl(self, features):
+        if isinstance(features, str):
+            features, self.label2idx, self.cls2idx = self.load_df(features)
+        self.valid_dl = NerDataLoader(
+            features, batch_size=self.batch_size, shuffle=self.shuffle, cuda=self.use_cuda)
+
+        self.idx2label = sorted(self.label2idx, key=lambda x: self.label2idx[x])
+        if self.is_cls:
+            self.idx2cls = sorted(self.cls2idx, key=lambda x: self.cls2idx[x])
+
+        return self.valid_dl
+
+    def load_test_dl(self, features):
+        if isinstance(features, str):
+            features, _, _ = self.load_df(features)
+        self.test_dl = NerDataLoader(
+            features, batch_size=self.batch_size, shuffle=self.shuffle, cuda=self.use_cuda)
+
+        return self.test_dl
+
     def load_df(self, df):
-        if not isinstance(df, pd.DataFrame):
+        if isinstance(df, str):
             df = pd.read_csv(df)
         tokenizer = self.tokenizer
         label2idx = self.label2idx
@@ -440,6 +405,4 @@ class BertNerData(object):
             assert len(input_ids) == len(input_type_ids)
             assert len(input_ids) == len(labels_ids)
             assert len(input_ids) == len(labels_mask)
-        self.label2idx = label2idx
-        self.cls2idx = cls2idx
-        return features
+        return features, label2idx, cls2idx
