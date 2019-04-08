@@ -287,7 +287,8 @@ class BertNerData(object):
         config_path = if_none(config_path, self.config_path)
         logging.info("Saving vocabs...")
         save_json(self.idx2label, idx2label_path)
-        save_json(self.idx2cls, idx2cls_path)
+        if self.idx2cls:
+            save_json(self.idx2cls, idx2cls_path)
         save_json(self.get_config(), config_path)
 
     def load_train_dl(self, features):
