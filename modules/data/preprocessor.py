@@ -282,6 +282,9 @@ class BertNerData(object):
         return data
 
     def save_vocabs_and_config(self, idx2label_path=None, idx2cls_path=None, config_path=None):
+        idx2label_path = if_none(idx2label_path, self.idx2label_path)
+        idx2cls_path = if_none(idx2cls_path, self.idx2cls_path)
+        config_path = if_none(config_path, self.config_path)
         logging.info("Saving vocabs...")
         save_json(self.idx2label, idx2label_path)
         save_json(self.idx2cls, idx2cls_path)
