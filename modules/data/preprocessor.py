@@ -327,6 +327,7 @@ class BertNerData(object):
     def load_df(self, df):
         if isinstance(df, str):
             df = pd.read_csv(df)
+            df = df.dropna()
         tokenizer = self.tokenizer
         label2idx = self.label2idx
         cls2idx = self.cls2idx
