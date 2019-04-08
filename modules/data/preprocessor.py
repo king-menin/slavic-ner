@@ -89,7 +89,7 @@ class NerDataLoader(DataLoader):
 
     def collate_fn(self, data):
         res = []
-        token_ml = max(map(lambda x_: sum(x_.data[0]), data))
+        token_ml = max(map(lambda x_: sum(x_.data[1]), data))
         sorted_idx = np.argsort(list(map(lambda x_: sum(x_.data[1]), data)))[::-1]
         for idx in sorted_idx:
             f = data[idx]
