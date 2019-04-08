@@ -16,7 +16,7 @@ class DataConverter(object):
         self.annotated_prefix = annotated_prefix
         self.raw_prefix = raw_prefix
         self.toktok = tokenize.toktok.ToktokTokenizer()
-        self.word_tokenize = self.toktok.sent_tokenize
+        self.word_tokenize = self.toktok.tokenize
         self.sent_tokenize = tokenize.sent_tokenize
         self.other_cat = other_cat
         self.dropna = dropna
@@ -24,6 +24,7 @@ class DataConverter(object):
         self.annotation_conflicts["interpretation"] = []
         self.annotation_conflicts["errors"] = []
         self.stats = defaultdict()
+        self.res_dfs = dict()
 
     def parse_raw(self, raw_path, sent_tokenize=None):
         sent_tokenize = if_none(sent_tokenize, self.sent_tokenize)
@@ -147,14 +148,15 @@ class DataConverter(object):
 
         return df
 
-    def prc_data(self, root,
+    def prc_data(self, root=None,
                  save_dir_name="processed",
                  annotated_prefix="annotated",
                  raw_prefix="raw",
                  sent_tokenize=None,
                  word_tokenize=None,
                  other_cat="O"):
-        res_dfs = []
+        self.res_dfs = dict()
+        root = if_none(root, self.root)
         sent_tokenize = if_none(sent_tokenize, self.sent_tokenize)
         word_tokenize = if_none(word_tokenize, self.word_tokenize)
         for topic_name in os.listdir(str(root/annotated_prefix)):
@@ -167,8 +169,8 @@ class DataConverter(object):
                 df = df.dropna()
             df.to_csv(str(root/save_dir_name/topic_name) + ".csv", index=False)
             self.stats[topic_name] = self.get_stats(df, other_cat)
-            res_dfs.append(df)
-        return res_dfs
+            self.res_dfs[topic_name] = df
+        return self.res_dfs
 
     @staticmethod
     def get_stats(df, other_cat="O"):
@@ -182,4 +184,4 @@ class DataConverter(object):
         clidxs = Counter()
         _ = df.clidxs.apply(lambda x: clidxs.update(x.split()))
 
-        return {"langs": langs, "tokens": tokens, "bio_tags": bio_tags, "clidxs": clidxs}
+        return {"langs": langs, "tokens": tokens, "bio_tags": bio_tags, "clidxs": clidxs, "tags": tags}
