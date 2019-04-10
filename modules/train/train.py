@@ -24,7 +24,7 @@ def train_step(dl, model, optimizer, num_epoch=1):
         optimizer.zero_grad()
         loss = loss.data.cpu().tolist()
         epoch_loss += loss
-        pr.set_description("Average train loss: {}".format(epoch_loss / idx))
+        pr.set_description("Epoch {}, average train loss: {}".format(num_epoch, epoch_loss / idx))
         torch.cuda.empty_cache()
     logging.info("\nEpoch {}, average train epoch loss={:.5}\n".format(
         num_epoch, epoch_loss / idx))
@@ -78,7 +78,7 @@ def validate_step(dl, model, data, sup_labels=None):
     idx = 0
     preds_cpu, targets_cpu = [], []
     preds_cpu_cls, targets_cpu_cls = [], []
-    for batch in tqdm(dl, total=len(dl), leave=False):
+    for batch, _ in tqdm(dl, total=len(dl), leave=False):
         idx += 1
         labels_mask, labels_ids = batch[-2:]
         preds = model.forward(batch)
