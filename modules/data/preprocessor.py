@@ -317,7 +317,7 @@ class BertNerData(object):
         return self.valid_dl
 
     def load_test_dl(self, features):
-        if isinstance(features, str):
+        if isinstance(features, (str, pd.DataFrame)):
             features, _, _ = self.load_df(features)
         self.test_dl = NerDataLoader(
             features, batch_size=self.batch_size, shuffle=self.shuffle, cuda=self.use_cuda)
@@ -327,7 +327,7 @@ class BertNerData(object):
     def load_df(self, df):
         if isinstance(df, str):
             df = pd.read_csv(df)
-            df = df.dropna()
+        df = df.dropna()
         tokenizer = self.tokenizer
         label2idx = self.label2idx
         cls2idx = self.cls2idx

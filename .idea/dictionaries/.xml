@@ -7,9 +7,13 @@
       <w>dropna</w>
       <w>idxs</w>
       <w>langs</w>
+      <w>prec</w>
+      <w>preds</w>
       <w>sents</w>
+      <w>sidx</w>
       <w>tokenized</w>
       <w>toktok</w>
+      <w>warmup</w>
     </words>
   </dictionary>
 </component>
