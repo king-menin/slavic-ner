@@ -14,14 +14,13 @@ class BertEmbedder(nn.Module):
                 "init_checkpoint_pt": self.init_checkpoint_pt,
                 "freeze": self.is_freeze,
                 "embedding_dim": self.embedding_dim,
-                "use_cuda": self.use_cuda,
-                "bert_mode": self.bert_mode
+                "use_cuda": self.use_cuda
             }
         }
         return config
 
     def __init__(self, model, bert_config_file, init_checkpoint_pt,
-                 freeze=True, embedding_dim=768, use_cuda=True, bert_mode="weighted",):
+                 freeze=True, embedding_dim=768, use_cuda=True):
         super(BertEmbedder, self).__init__()
         self.bert_config_file = bert_config_file
         self.init_checkpoint_pt = init_checkpoint_pt
@@ -29,10 +28,6 @@ class BertEmbedder(nn.Module):
         self.embedding_dim = embedding_dim
         self.model = model
         self.use_cuda = use_cuda
-        self.bert_mode = bert_mode
-        if self.bert_mode == "weighted":
-            self.bert_weights = nn.Parameter(torch.FloatTensor(12, embedding_dim))
-            self.bert_gamma = nn.Parameter(torch.FloatTensor(1, embedding_dim))
 
         if use_cuda:
             self.cuda()
@@ -43,25 +38,18 @@ class BertEmbedder(nn.Module):
     def from_config(cls, config):
         return cls.create(**config)
 
-    def init_weights(self):
-        if self.bert_mode == "weighted":
-            nn.init.xavier_normal(self.bert_gamma)
-            nn.init.xavier_normal(self.bert_weights)
-
     def forward(self, *batch):
         input_ids, input_mask, input_type_ids = batch[:3]
         all_encoder_layers, _ = self.model(input_ids, token_type_ids=input_type_ids, attention_mask=input_mask)
-        if self.bert_mode == "last":
-            return all_encoder_layers[-1]
-        elif self.bert_mode == "weighted":
-            all_encoder_layers = torch.stack([a * b for a, b in zip(all_encoder_layers, self.bert_weights)])
-            return self.bert_gamma * torch.sum(all_encoder_layers, dim=0)
+        return all_encoder_layers
 
     def freeze(self):
-        self.model.eval()
+        for param in self.model.parameters():
+            param.requires_grad = False
 
     def unfreeze(self):
-        self.model.train()
+        for param in self.model.parameters():
+            param.requires_grad = True
 
     def get_n_trainable_params(self):
         pp = 0
@@ -75,8 +63,7 @@ class BertEmbedder(nn.Module):
 
     @classmethod
     def create(cls,
-               bert_config_file, init_checkpoint_pt, embedding_dim=768, use_cuda=True,
-               bert_mode="weighted", freeze=True):
+               bert_config_file, init_checkpoint_pt, embedding_dim=768, use_cuda=True, freeze=True):
         bert_config = bert_modeling.BertConfig.from_json_file(bert_config_file)
         model = bert_modeling.BertModel(bert_config)
         if use_cuda:
@@ -87,7 +74,7 @@ class BertEmbedder(nn.Module):
             device = torch.device("cpu")
         model.load_state_dict(torch.load(init_checkpoint_pt, map_location=map_location))
         model = model.to(device)
-        model = cls(model=model, embedding_dim=embedding_dim, use_cuda=use_cuda, bert_mode=bert_mode,
+        model = cls(model=model, embedding_dim=embedding_dim, use_cuda=use_cuda,
                     bert_config_file=bert_config_file, init_checkpoint_pt=init_checkpoint_pt, freeze=freeze)
         if freeze:
             model.freeze()
@@ -97,7 +84,7 @@ class BertEmbedder(nn.Module):
 class BertBiLSTMEncoder(nn.Module):
 
     def __init__(self, embeddings,
-                 hidden_dim=128, rnn_layers=1, dropout=0.5, use_cuda=True):
+                 hidden_dim=128, rnn_layers=1, dropout=0.5, use_cuda=True, bert_mode="weighted"):
         super(BertBiLSTMEncoder, self).__init__()
         self.embeddings = embeddings
         self.hidden_dim = hidden_dim
@@ -113,8 +100,15 @@ class BertBiLSTMEncoder(nn.Module):
         self.init_weights()
         self.output_dim = hidden_dim
         self.hidden = None
+        self.bert_mode = bert_mode
+        if self.bert_mode == "weighted":
+            self.bert_weights = nn.Parameter(torch.FloatTensor(12, embeddings.embedding_dim))
+            self.bert_gamma = nn.Parameter(torch.FloatTensor(1, embeddings.embedding_dim))
 
     def init_weights(self):
+        if self.bert_mode == "weighted":
+            nn.init.xavier_normal(self.bert_gamma)
+            nn.init.xavier_normal(self.bert_weights)
         for param in self.parameters():
             if len(param.shape) >= 2:
                 nn.init.orthogonal_(param.data)
@@ -123,7 +117,12 @@ class BertBiLSTMEncoder(nn.Module):
 
     def forward(self, batch):
         input_mask = batch[1]
-        output = self.embeddings(*batch)
+        all_encoder_layers = self.embeddings(*batch)
+        if self.bert_mode == "last":
+            output = all_encoder_layers[-1]
+        else:
+            all_encoder_layers = torch.stack([a * b for a, b in zip(all_encoder_layers, self.bert_weights)])
+            output = self.bert_gamma * torch.sum(all_encoder_layers, dim=0)
         output = self.dropout(output)
         lens = input_mask.sum(-1)
         output = nn.utils.rnn.pack_padded_sequence(
@@ -146,8 +145,10 @@ class BertBiLSTMEncoder(nn.Module):
     def create(cls, bert_config_file, init_checkpoint_pt, embedding_dim=768,
                bert_mode="weighted", freeze=True,
                hidden_dim=128, rnn_layers=1, dropout=0.5, use_cuda=True):
-        embeddings = BertEmbedder.create(bert_config_file, init_checkpoint_pt, embedding_dim, use_cuda,
-                                         bert_mode, freeze)
+        if bert_mode not in ["weighed", "last"]:
+            raise NotImplemented
+        embeddings = BertEmbedder.create(
+            bert_config_file, init_checkpoint_pt, embedding_dim, use_cuda, freeze)
         model = cls(
-            embeddings, hidden_dim, rnn_layers, dropout, use_cuda=use_cuda)
+            embeddings, hidden_dim, rnn_layers, dropout, use_cuda=use_cuda, bert_mode=bert_mode)
         return model
