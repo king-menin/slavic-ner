@@ -32,8 +32,6 @@ class BertEmbedder(nn.Module):
         if use_cuda:
             self.cuda()
 
-        self.init_weights()
-
     @classmethod
     def from_config(cls, config):
         return cls.create(**config)
@@ -97,13 +95,13 @@ class BertBiLSTMEncoder(nn.Module):
             rnn_layers, batch_first=True, bidirectional=True)
         if use_cuda:
             self.cuda()
-        self.init_weights()
         self.output_dim = hidden_dim
         self.hidden = None
         self.bert_mode = bert_mode
         if self.bert_mode == "weighted":
             self.bert_weights = nn.Parameter(torch.FloatTensor(12, embeddings.embedding_dim))
             self.bert_gamma = nn.Parameter(torch.FloatTensor(1, embeddings.embedding_dim))
+        self.init_weights()
 
     def init_weights(self):
         if self.bert_mode == "weighted":
@@ -145,7 +143,7 @@ class BertBiLSTMEncoder(nn.Module):
     def create(cls, bert_config_file, init_checkpoint_pt, embedding_dim=768,
                bert_mode="weighted", freeze=True,
                hidden_dim=128, rnn_layers=1, dropout=0.5, use_cuda=True):
-        if bert_mode not in ["weighed", "last"]:
+        if bert_mode not in ["weighted", "last"]:
             raise NotImplemented
         embeddings = BertEmbedder.create(
             bert_config_file, init_checkpoint_pt, embedding_dim, use_cuda, freeze)
