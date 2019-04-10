@@ -164,7 +164,6 @@ class NCRFDecoder(nn.Module):
         self.eval()
         logits = self.forward_model(inputs)
         _, preds = self.crf._viterbi_decode_nbest(logits, labels_mask, self.nbest)
-        # print(preds.shape)
         preds = preds[:, :, 0]
         self.train()
         return preds

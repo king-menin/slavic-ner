@@ -68,7 +68,7 @@ class NCRF(nn.Module):
         batch_size = feats.size(0)
         seq_len = feats.size(1)
         tag_size = feats.size(2)
-        # print feats.view(seq_len, tag_size)
+
         assert (tag_size == self.tagset_size + 2)
         mask = mask.transpose(1, 0).contiguous()
         ins_num = seq_len * batch_size
@@ -94,7 +94,6 @@ class NCRF(nn.Module):
             cur_values = cur_values + partition.contiguous().view(batch_size, tag_size, 1).expand(batch_size, tag_size,
                                                                                                   tag_size)
             cur_partition = log_sum_exp(cur_values, tag_size)
-            # print cur_partition.data
 
             # (bat_size * from_target * to_target) -> (bat_size * to_target)
             mask_idx = mask[idx, :].view(batch_size, 1).expand(batch_size, tag_size)
@@ -150,8 +149,8 @@ class NCRF(nn.Module):
         mask = (1 - mask.long()).byte()
         _, inivalues = next(seq_iter)  # bat_size * from_target_size * to_target_size
         # only need start from start_tag
-        partition = inivalues[:, START_TAG, :].clone().view(batch_size, tag_size)  # bat_size * to_target_size
-        # print "init part:",partition.size()
+        partition = inivalues[:, START_TAG, :].clone().view(batch_size, tag_size)
+        # bat_size * to_target_size
         partition_history.append(partition)
         # iter over last scores
         for idx, cur_values in seq_iter:
@@ -161,13 +160,8 @@ class NCRF(nn.Module):
             cur_values = cur_values + partition.contiguous().view(batch_size, tag_size, 1).expand(batch_size, tag_size,
                                                                                                   tag_size)
             # forscores, cur_bp = torch.max(cur_values[:,:-2,:], 1) # do not consider START_TAG/STOP_TAG
-            # print "cur value:", cur_values.size()
+
             partition, cur_bp = torch.max(cur_values, 1)
-            # print "partsize:",partition.size()
-            # exit(0)
-            # print partition
-            # print cur_bp
-            # print "one best, ",idx
             partition_history.append(partition)
             # cur_bp: (batch_size, tag_size) max source score position in current tag
             # set padded label as 0, which will be filtered in post processing
@@ -196,11 +190,8 @@ class NCRF(nn.Module):
         insert_last = pointer.contiguous().view(batch_size, 1, 1).expand(batch_size, 1, tag_size)
         back_points = back_points.transpose(1, 0).contiguous()
         # move the end ids(expand to tag_size) to the corresponding position of back_points to replace the 0 values
-        # print "lp:",last_position
-        # print "il:",insert_last
+
         back_points.scatter_(1, last_position, insert_last)
-        # print "bp:",back_points
-        # exit(0)
         back_points = back_points.transpose(1, 0).contiguous()
         # decode from the end, padded position ids are 0, which will be filtered if following evaluation
         decode_idx = autograd.Variable(torch.LongTensor(seq_len, batch_size))
@@ -262,7 +253,7 @@ class NCRF(nn.Module):
         mask = mask.byte()
         tg_energy = tg_energy.masked_select(mask.transpose(1, 0))
 
-        # # calculate the score from START_TAG to first label
+        # calculate the score from START_TAG to first label
         # start_transition = self.transitions[START_TAG,:].view(1, tag_size).expand(batch_size, tag_size)
         # start_energy = torch.gather(start_transition, 1, tags[0,:])
 
@@ -276,8 +267,7 @@ class NCRF(nn.Module):
         batch_size = feats.size(0)
         forward_score, scores = self._calculate_PZ(feats, mask)
         gold_score = self._score_sentence(scores, mask, tags)
-        # print "batch, f:", forward_score.data[0], " g:", gold_score.data[0], " dis:", forward_score.data[0] - gold_score.data[0]
-        # exit(0)
+
         return forward_score - gold_score
 
     def _viterbi_decode_nbest(self, feats, mask, nbest):
@@ -334,19 +324,14 @@ class NCRF(nn.Module):
                     batch_size, tag_size, nbest, 1).expand(batch_size, tag_size, nbest, tag_size)
                 # compare all nbest and all from target
                 cur_values = cur_values.view(batch_size, tag_size * nbest, tag_size)
-                # print "cur size:",cur_values.size()
             partition, cur_bp = torch.topk(cur_values, nbest, 1)
             # cur_bp/partition: [batch_size, nbest, tag_size], id should be normize through nbest in following backtrace step
-            # print partition[:,0,:]
-            # print cur_bp[:,0,:]
-            # print "nbest, ",idx
+
             if idx == 1:
                 cur_bp = cur_bp * nbest
             partition = partition.transpose(2, 1)
             cur_bp = cur_bp.transpose(2, 1)
 
-            # print partition
-            # exit(0)
             # partition: (batch_size * to_target * nbest)
             # cur_bp: (batch_size * to_target * nbest) Notice the cur_bp number is the whole position of tag_size*nbest, need to convert when decode
             partition_history.append(partition)
@@ -354,7 +339,7 @@ class NCRF(nn.Module):
             # set padded label as 0, which will be filtered in post processing
             # mask[idx] ? mask[idx-1]
             cur_bp.masked_fill_(mask[idx].view(batch_size, 1, 1).expand(batch_size, tag_size, nbest), 0)
-            # print cur_bp[0]
+
             back_points.append(cur_bp)
         # add score to final STOP_TAG
         partition_history = torch.cat(partition_history, 0).view(seq_len, batch_size, tag_size, nbest).transpose(1,
@@ -383,17 +368,11 @@ class NCRF(nn.Module):
         insert_last = pointer.contiguous().view(batch_size, 1, 1, nbest).expand(batch_size, 1, tag_size, nbest)
         back_points = back_points.transpose(1, 0).contiguous()
         # move the end ids(expand to tag_size) to the corresponding position of back_points to replace the 0 values
-        # print "lp:",last_position
-        # print "il:",insert_last[0]
-        # exit(0)
         # copy the ids of last position:insert_last to back_points, though the last_position index
         # last_position includes the length of batch sentences
-        # print "old:", back_points[9,0,:,:]
+
         back_points.scatter_(1, last_position, insert_last)
         # back_points: [batch_size, seq_length, tag_size, nbest]
-        # print "new:", back_points[9,0,:,:]
-        # exit(0)
-        # print pointer[2]
         '''
         back_points: in simple demonstratration
         x,x,x,x,x,x,x,x,x,7
@@ -402,20 +381,14 @@ class NCRF(nn.Module):
         '''
 
         back_points = back_points.transpose(1, 0).contiguous()
-        # print back_points[0]
         # back_points: (seq_len, batch, tag_size, nbest)
         # decode from the end, padded position ids are 0, which will be filtered in following evaluation
         decode_idx = autograd.Variable(torch.LongTensor(seq_len, batch_size, nbest))
         if self.gpu:
             decode_idx = decode_idx.cuda()
         decode_idx[-1] = pointer.data / nbest
-        # print "pointer-1:",pointer[2]
-        # exit(0)
         # use old mask, let 0 means has token
         for idx in range(len(back_points) - 2, -1, -1):
-            # print "pointer: ",idx,  pointer[3]
-            # print "back:",back_points[idx][3]
-            # print "mask:",mask[idx+1,3]
             new_pointer = torch.gather(back_points[idx].view(batch_size, tag_size * nbest), 1,
                                        pointer.contiguous().view(batch_size, nbest))
             decode_idx[idx] = new_pointer.data / nbest
@@ -423,15 +396,8 @@ class NCRF(nn.Module):
             pointer = new_pointer + pointer.contiguous().view(batch_size, nbest) * mask[idx].view(batch_size, 1).expand(
                 batch_size, nbest).long()
 
-        # exit(0)
-        path_score = None
         decode_idx = decode_idx.transpose(1, 0)
         # decode_idx: [batch, seq_len, nbest]
-        # print decode_idx[:,:,0]
-        # print "nbest:",nbest
-        # print "diff:", decode_idx[:,:,0]- decode_idx[:,:,4]
-        # print decode_idx[:,0,:]
-        # exit(0)
 
         # calculate probability for each sequence
         scores = end_partition[:, :, STOP_TAG]
