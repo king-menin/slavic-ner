@@ -124,15 +124,12 @@ class BertBiLSTMEncoder(nn.Module):
     def forward(self, batch):
         input_mask = batch[1]
         output = self.embeddings(*batch)
-        if self.meta_embeddings:
-            output = torch.cat((output, self.meta_embeddings(*batch)), dim=-1)
         output = self.dropout(output)
         lens = input_mask.sum(-1)
         output = nn.utils.rnn.pack_padded_sequence(
             output, lens.tolist(), batch_first=True)
         output, self.hidden = self.lstm(output)
         output, _ = nn.utils.rnn.pad_packed_sequence(output, batch_first=True)
-        output = torch.cat((output, batch[3]), dim=-1)
         return output, self.hidden
 
     def get_n_trainable_params(self):

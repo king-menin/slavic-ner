@@ -64,10 +64,10 @@ class InputFeatures(object):
         self.tokens = tokens
         self.labels = labels
         # Labels data
-        self.labels_ids = labels_ids
-        self.data.append(labels_ids)
         self.labels_mask = labels_mask
         self.data.append(labels_mask)
+        self.labels_ids = labels_ids
+        self.data.append(labels_ids)
         # Used for joint model
         self.cls = cls
         self.cls_idx = cls_idx
@@ -150,7 +150,7 @@ class BertNerData(object):
         self.idx2cls = idx2cls
         self.is_cls = is_cls
         self.cls2idx = None
-        if is_cls:
+        if idx2cls:
             self.cls2idx = {label: idx for idx, label in enumerate(idx2cls)}
 
         self.use_cuda = use_cuda
@@ -159,9 +159,6 @@ class BertNerData(object):
 
         self.idx2label_path = idx2label_path
         self.idx2cls_path = idx2cls_path
-
-        if is_cls and not idx2cls:
-            raise ValueError("Must set idx2cls if run on classification mode.")
 
         self.train_dl = None
         self.valid_dl = None

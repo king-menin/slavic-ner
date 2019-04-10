@@ -90,8 +90,6 @@ class BertBiLSTMAttnNCRFJoint(NerModel):
                input_dropout=0.5,
                # Global params
                use_cuda=True,
-               # Meta
-               meta_dim=None,
                # NCRFpp
                nbest=8):
         encoder = BertBiLSTMEncoder.create(
@@ -126,8 +124,6 @@ class BertBiLSTMAttnNCRF(NerModel):
                input_dropout=0.5,
                # Global params
                use_cuda=True,
-               # Meta
-               meta_dim=None,
                # NCRFpp
                nbest=8):
         encoder = BertBiLSTMEncoder.create(
@@ -160,9 +156,6 @@ class BertBiLSTMNCRF(NerModel):
                output_dropout=0.4,
                # Global params
                use_cuda=True,
-               # Meta
-               meta_dim=None,
-               vocab_meta_dim=None,
                # NCRFpp
                nbest=8):
         encoder = BertBiLSTMEncoder.create(
