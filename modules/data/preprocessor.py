@@ -26,31 +26,30 @@ class InputFeatures(object):
         ----------
         bert_tokens : list[str]
             List of words that was tokenized by BERT tokenizer.
-            Represented at data[0].
         input_ids: list[int]
             Encoded BERT tokens.
-            Represented at data[1].
+            Represented at data[0].
         input_mask : list[int]
             Mask of BERT tokens.
-            Represented at data[2].
+            Represented at data[1].
         input_type_ids : list[int]
             Segment mask of BERT tokens.
-            Represented at data[3].
+            Represented at data[2].
         tokens : list[str]
             Origin tokens.
         labels : list[str]
             Origin labels.
+        labels_mask : list[int]
+            Mask of origin labels (not equally to input_mask).
+            Represented at data[3].
         labels_ids : list[int]
             Encoded origin labels.
             Represented at data[4].
-        labels_mask : list[int]
-            Mask of origin labels (not equally to input_mask).
-            Represented at data[5].
         cls : str or None, optional (default=None)
             If not None cls is label of sample class (used in joint learning).
         cls_idx : int or None, optional (default=None)
             If not None cls_idx is encoded label of sample class (used in joint learning).
-            If not None represented at data[6].
+            If not None represented at data[5].
         """
         self.data = []
         # Bert data
@@ -65,10 +64,10 @@ class InputFeatures(object):
         self.tokens = tokens
         self.labels = labels
         # Labels data
-        self.labels_mask = labels_mask
-        self.data.append(labels_mask)
         self.labels_ids = labels_ids
         self.data.append(labels_ids)
+        self.labels_mask = labels_mask
+        self.data.append(labels_mask)
         # Used for joint model
         self.cls = cls
         self.cls_idx = cls_idx

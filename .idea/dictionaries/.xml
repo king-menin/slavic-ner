@@ -1,18 +1,31 @@
 <component name="ProjectDictionaryState">
   <dictionary name="пк">
     <words>
+      <w>avgpool</w>
+      <w>broadcastable</w>
       <w>clidx</w>
       <w>clidxs</w>
       <w>cuda</w>
       <w>dropna</w>
+      <w>embedder</w>
+      <w>forscores</w>
       <w>idxs</w>
+      <w>inivalues</w>
       <w>langs</w>
+      <w>logits</w>
+      <w>loglik</w>
+      <w>lstm</w>
+      <w>maskvalue</w>
+      <w>mxpool</w>
+      <w>nbest</w>
+      <w>ncrf</w>
       <w>prec</w>
       <w>preds</w>
       <w>sents</w>
       <w>sidx</w>
       <w>tokenized</w>
       <w>toktok</w>
+      <w>viterbi</w>
       <w>warmup</w>
     </words>
   </dictionary>
