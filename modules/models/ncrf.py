@@ -17,6 +17,7 @@ import torch.autograd as autograd
 import torch.nn as nn
 import torch.nn.functional as F
 
+
 START_TAG = -2
 STOP_TAG = -1
 
@@ -39,10 +40,10 @@ def log_sum_exp(vec, m_size):
 
 class NCRF(nn.Module):
 
-    def __init__(self, tagset_size, gpu):
+    def __init__(self, tagset_size, device):
         super(NCRF, self).__init__()
         print("build CRF...")
-        self.gpu = gpu
+        self.device = device
         # Matrix of transition parameters.  Entry i,j is the score of transitioning *to* i *from* j.
         self.tagset_size = tagset_size
         # # We add 2 here, because of START_TAG and STOP_TAG
@@ -52,8 +53,8 @@ class NCRF(nn.Module):
         init_transitions[STOP_TAG, :] = -10000.0
         init_transitions[:, 0] = -10000.0
         init_transitions[0, :] = -10000.0
-        if self.gpu:
-            init_transitions = init_transitions.cuda()
+        if self.device != "cpu":
+            init_transitions = init_transitions.cuda(device)
         self.transitions = nn.Parameter(init_transitions)
 
         # self.transitions = nn.Parameter(torch.Tensor(self.tagset_size+2, self.tagset_size+2))
@@ -180,8 +181,8 @@ class NCRF(nn.Module):
             batch_size, tag_size, tag_size)
         _, last_bp = torch.max(last_values, 1)
         pad_zero = autograd.Variable(torch.zeros(batch_size, tag_size)).long()
-        if self.gpu:
-            pad_zero = pad_zero.cuda()
+        if self.device != "cpu":
+            pad_zero = pad_zero.cuda(self.device)
         back_points.append(pad_zero)
         back_points = torch.cat(back_points).view(seq_len, batch_size, tag_size)
 
@@ -195,8 +196,8 @@ class NCRF(nn.Module):
         back_points = back_points.transpose(1, 0).contiguous()
         # decode from the end, padded position ids are 0, which will be filtered if following evaluation
         decode_idx = autograd.Variable(torch.LongTensor(seq_len, batch_size))
-        if self.gpu:
-            decode_idx = decode_idx.cuda()
+        if self.device != "cpu":
+            decode_idx = decode_idx.cuda(self.device)
         decode_idx[-1] = pointer.data
         for idx in range(len(back_points) - 2, -1, -1):
             pointer = torch.gather(back_points[idx], 1, pointer.contiguous().view(batch_size, 1))
@@ -224,8 +225,8 @@ class NCRF(nn.Module):
         tag_size = scores.size(2)
         # convert tag value into a new format, recorded label bigram information to index
         new_tags = autograd.Variable(torch.LongTensor(batch_size, seq_len))
-        if self.gpu:
-            new_tags = new_tags.cuda()
+        if self.device != "cpu":
+            new_tags = new_tags.cuda(self.device)
         for idx in range(seq_len):
             if idx == 0:
                 # start -> first score
@@ -348,9 +349,8 @@ class NCRF(nn.Module):
         last_position = length_mask.view(batch_size, 1, 1, 1).expand(batch_size, 1, tag_size, nbest) - 1
         last_partition = torch.gather(partition_history, 1, last_position).view(batch_size, tag_size, nbest, 1)
         # calculate the score from last partition to end state (and then select the STOP_TAG from it)
-        last_values = last_partition.expand(batch_size, tag_size, nbest, tag_size) + self.transitions.view(1, tag_size,
-                                                                                                           1,
-                                                                                                           tag_size).expand(
+        last_values = last_partition.expand(batch_size, tag_size, nbest, tag_size) + self.transitions.view(
+            1, tag_size, 1, tag_size).expand(
             batch_size, tag_size, nbest, tag_size)
         last_values = last_values.view(batch_size, tag_size * nbest, tag_size)
         end_partition, end_bp = torch.topk(last_values, nbest, 1)
@@ -358,8 +358,8 @@ class NCRF(nn.Module):
         end_bp = end_bp.transpose(2, 1)
         # end_bp: (batch, tag_size, nbest)
         pad_zero = autograd.Variable(torch.zeros(batch_size, tag_size, nbest)).long()
-        if self.gpu:
-            pad_zero = pad_zero.cuda()
+        if self.device != "cpu":
+            pad_zero = pad_zero.cuda(self.device)
         back_points.append(pad_zero)
         back_points = torch.cat(back_points).view(seq_len, batch_size, tag_size, nbest)
 
@@ -384,8 +384,8 @@ class NCRF(nn.Module):
         # back_points: (seq_len, batch, tag_size, nbest)
         # decode from the end, padded position ids are 0, which will be filtered in following evaluation
         decode_idx = autograd.Variable(torch.LongTensor(seq_len, batch_size, nbest))
-        if self.gpu:
-            decode_idx = decode_idx.cuda()
+        if self.device != "cpu":
+            decode_idx = decode_idx.cuda(self.device)
         decode_idx[-1] = pointer.data / nbest
         # use old mask, let 0 means has token
         for idx in range(len(back_points) - 2, -1, -1):

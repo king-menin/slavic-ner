@@ -77,14 +77,14 @@ class InputFeatures(object):
 
 class NerDataLoader(DataLoader):
 
-    def __init__(self, data_set, shuffle, cuda, **kwargs):
+    def __init__(self, data_set, shuffle, device, **kwargs):
         super(NerDataLoader, self).__init__(
             dataset=data_set,
             collate_fn=self.collate_fn,
             shuffle=shuffle,
             **kwargs
         )
-        self.cuda = cuda
+        self.device = device
 
     def collate_fn(self, data):
         res = []
@@ -101,8 +101,8 @@ class NerDataLoader(DataLoader):
         res_ = []
         for idx, x in enumerate(zip(*res)):
             res_.append(torch.LongTensor(x))
-        if self.cuda:
-            res_ = [t.cuda() for t in res_]
+        if self.device != "cpu":
+            res_ = [t.cuda(self.device) for t in res_]
         return res_, sorted_idx
 
 
@@ -120,7 +120,7 @@ class BertNerData(object):
             "batch_size": self.batch_size,
             "is_cls": self.is_cls,
             "pad": "<pad>",
-            "use_cuda": self.use_cuda,
+            "device": self.device,
             "config_path": self.config_path,
             "shuffle": self.shuffle
         }
@@ -130,7 +130,7 @@ class BertNerData(object):
                  tokenizer=None,
                  bert_model_type="bert_cased", idx2cls=None, max_seq_len=424,
                  batch_size=16, is_cls=False,
-                 idx2label_path=None, idx2cls_path=None, pad="<pad>", use_cuda=True, data_columns=["0", "1", "2"],
+                 idx2label_path=None, idx2cls_path=None, pad="<pad>", device=True, data_columns=["0", "1", "2"],
                  shuffle=True):
         """Store attributes in one cls. For more doc see BertNerData.create"""
         self.train_path = train_path
@@ -153,7 +153,7 @@ class BertNerData(object):
         if idx2cls:
             self.cls2idx = {label: idx for idx, label in enumerate(idx2cls)}
 
-        self.use_cuda = use_cuda
+        self.device = device
 
         self.pad = pad
 
@@ -181,7 +181,7 @@ class BertNerData(object):
                idx2label=None, bert_model_type="bert_cased", idx2cls=None,
                max_seq_len=424,
                batch_size=16, is_cls=False,
-               idx2label_path=None, idx2cls_path=None, pad="<pad>", use_cuda=True,
+               idx2label_path=None, idx2cls_path=None, pad="<pad>", device="cuda:0",
                clear_cache=True, data_columns=["0", "1", "2"], shuffle=True, dir_config=None):
         """
         Create or skip data loaders, load or create vocabs.
@@ -215,8 +215,9 @@ class BertNerData(object):
             Path to idx2cls map. If not None and idx2cls is None load idx2cls.
         pad : str, optional (default="<pad>")
             Padding token.
-        use_cuda : bool, optional (default=True)
-            Run model on gpu or cpu. If gpu pin tensors in data loaders to gpu.
+        device : str, optional (default="cuda:0")
+            Run model on gpu or cpu. If "cpu" don't pin tensors in data loaders to gpu.
+            Notation similar as torch.cuda.device.
         clear_cache : bool, optional (default=True)
             If True, rewrite all vocabs and BertNerData config.
         data_columns : list[str]
@@ -266,7 +267,7 @@ class BertNerData(object):
                    bert_model_type=bert_model_type, idx2cls=idx2cls, max_seq_len=max_seq_len,
                    batch_size=batch_size, is_cls=is_cls,
                    idx2label_path=idx2label_path, idx2cls_path=idx2cls_path,
-                   pad=pad, use_cuda=use_cuda, data_columns=data_columns, shuffle=shuffle)
+                   pad=pad, device=device, data_columns=data_columns, shuffle=shuffle)
 
         if train_path is not None:
             _ = data.load_train_dl(train_path)
@@ -292,7 +293,7 @@ class BertNerData(object):
         if isinstance(features, str):
             features, self.label2idx, self.cls2idx = self.load_df(features)
         self.train_dl = NerDataLoader(
-            features, batch_size=self.batch_size, shuffle=self.shuffle, cuda=self.use_cuda)
+            features, batch_size=self.batch_size, shuffle=self.shuffle, device=self.device)
 
         self.idx2label = sorted(self.label2idx, key=lambda x: self.label2idx[x])
         if self.is_cls:
@@ -304,7 +305,7 @@ class BertNerData(object):
         if isinstance(features, str):
             features, self.label2idx, self.cls2idx = self.load_df(features)
         self.valid_dl = NerDataLoader(
-            features, batch_size=self.batch_size, shuffle=self.shuffle, cuda=self.use_cuda)
+            features, batch_size=self.batch_size, shuffle=self.shuffle, device=self.device)
 
         self.idx2label = sorted(self.label2idx, key=lambda x: self.label2idx[x])
         if self.is_cls:
@@ -318,7 +319,7 @@ class BertNerData(object):
         if not (isinstance(features, list) and isinstance(features[0], InputFeatures)):
             raise TypeError("features should be of type InputFeatures.")
         self.test_dl = NerDataLoader(
-            features, batch_size=self.batch_size, shuffle=self.shuffle, cuda=self.use_cuda)
+            features, batch_size=self.batch_size, shuffle=self.shuffle, device=self.device)
 
         return self.test_dl
 

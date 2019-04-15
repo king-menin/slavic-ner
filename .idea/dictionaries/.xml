@@ -2,6 +2,7 @@
   <dictionary name="пк">
     <words>
       <w>avgpool</w>
+      <w>bahdanau</w>
       <w>broadcastable</w>
       <w>clidx</w>
       <w>clidxs</w>
@@ -9,9 +10,11 @@
       <w>dropna</w>
       <w>embedder</w>
       <w>forscores</w>
+      <w>hiddens</w>
       <w>idxs</w>
       <w>inivalues</w>
       <w>langs</w>
+      <w>linears</w>
       <w>logits</w>
       <w>loglik</w>
       <w>lstm</w>
@@ -23,6 +26,7 @@
       <w>preds</w>
       <w>sents</w>
       <w>sidx</w>
+      <w>softmax</w>
       <w>tokenized</w>
       <w>toktok</w>
       <w>viterbi</w>

@@ -73,8 +73,8 @@ class AttnNCRFJointDecoder(nn.Module):
 
     @classmethod
     def create(cls, label_size, input_dim, intent_size, input_dropout=0.5, key_dim=64,
-               val_dim=64, num_heads=3, use_cuda=True, nbest=8):
-        return cls(NCRF(label_size, use_cuda), label_size + 2, input_dim, intent_size, input_dropout,
+               val_dim=64, num_heads=3, device="cuda:0", nbest=8):
+        return cls(NCRF(label_size, device), label_size + 2, input_dim, intent_size, input_dropout,
                    key_dim, val_dim, num_heads, nbest)
 
 
@@ -118,8 +118,8 @@ class AttnNCRFDecoder(nn.Module):
 
     @classmethod
     def create(cls, label_size, input_dim, input_dropout=0.5, key_dim=64,
-               val_dim=64, num_heads=3, use_cuda=True, nbest=8):
-        return cls(NCRF(label_size, use_cuda), label_size + 2, input_dim, input_dropout,
+               val_dim=64, num_heads=3, device="cuda:0", nbest=8):
+        return cls(NCRF(label_size, device), label_size + 2, input_dim, input_dropout,
                    key_dim, val_dim, num_heads, nbest)
 
     
@@ -178,5 +178,5 @@ class NCRFDecoder(nn.Module):
         return cls.create(**config)
 
     @classmethod
-    def create(cls, label_size, input_dim, input_dropout=0.5, use_cuda=True, nbest=8):
-        return cls(NCRF(label_size, use_cuda), label_size + 2, input_dim, input_dropout, nbest)
+    def create(cls, label_size, input_dim, input_dropout=0.5, device="cuda:0", nbest=8):
+        return cls(NCRF(label_size, device), label_size + 2, input_dim, input_dropout, nbest)

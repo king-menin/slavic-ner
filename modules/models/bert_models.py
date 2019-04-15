@@ -9,13 +9,13 @@ from .decoders import AttnNCRFJointDecoder, AttnNCRFDecoder, NCRFDecoder
 class NerModel(nn.Module, metaclass=abc.ABCMeta):
 
     """Base class for all Models"""
-    def __init__(self, encoder, decoder, use_cuda=True):
+    def __init__(self, encoder, decoder, device="cuda:0"):
         super(NerModel, self).__init__()
         self.encoder = encoder
         self.decoder = decoder
-        self.use_cuda = use_cuda
-        if use_cuda:
-            self.cuda()
+        self.device = device
+        if device != "cpu":
+            self.cuda(int(device.split(":")[1]))
 
     @abc.abstractmethod
     def forward(self, *batch):
@@ -48,7 +48,7 @@ class NerModel(nn.Module, metaclass=abc.ABCMeta):
                 "params": {
                     "encoder": self.encoder.get_config(),
                     "decoder": self.decoder.get_config(),
-                    "use_cuda": self.use_cuda
+                    "device": self.device
                 }
             }
         except AttributeError:
@@ -63,7 +63,7 @@ class NerModel(nn.Module, metaclass=abc.ABCMeta):
     def from_config(cls, config):
         encoder = released_models["encoder"].from_config(**config["encoder"]["params"])
         decoder = released_models["decoder"].from_config(**config["decoder"]["params"])
-        return cls(encoder, decoder, config["use_cuda"])
+        return cls(encoder, decoder, config["device"])
 
 
 class BertBiLSTMAttnNCRFJoint(NerModel):
@@ -89,16 +89,16 @@ class BertBiLSTMAttnNCRFJoint(NerModel):
                key_dim=64, val_dim=64, num_heads=3,
                input_dropout=0.5,
                # Global params
-               use_cuda=True,
+               device="cuda:0",
                # NCRFpp
                nbest=8):
         encoder = BertBiLSTMEncoder.create(
             bert_config_file, init_checkpoint_pt, embedding_dim, bert_mode, freeze,
-            enc_hidden_dim, rnn_layers, input_dropout, use_cuda)
+            enc_hidden_dim, rnn_layers, input_dropout, device)
         decoder = AttnNCRFJointDecoder.create(
-            label_size, encoder.output_dim, intent_size, input_dropout, key_dim, val_dim, num_heads, use_cuda,
+            label_size, encoder.output_dim, intent_size, input_dropout, key_dim, val_dim, num_heads, device,
             nbest=nbest)
-        return cls(encoder, decoder, use_cuda)
+        return cls(encoder, decoder, device)
 
 
 class BertBiLSTMAttnNCRF(NerModel):
@@ -123,15 +123,15 @@ class BertBiLSTMAttnNCRF(NerModel):
                key_dim=64, val_dim=64, num_heads=3,
                input_dropout=0.5,
                # Global params
-               use_cuda=True,
+               device="cuda:0",
                # NCRFpp
                nbest=8):
         encoder = BertBiLSTMEncoder.create(
             bert_config_file, init_checkpoint_pt, embedding_dim, bert_mode, freeze,
-            enc_hidden_dim, rnn_layers, input_dropout, use_cuda)
+            enc_hidden_dim, rnn_layers, input_dropout, device)
         decoder = AttnNCRFDecoder.create(
             label_size, encoder.output_dim, input_dropout, key_dim, val_dim, num_heads, nbest)
-        return cls(encoder, decoder, use_cuda)
+        return cls(encoder, decoder, device)
 
 
 class BertBiLSTMNCRF(NerModel):
@@ -155,12 +155,12 @@ class BertBiLSTMNCRF(NerModel):
                input_dropout=0.5,
                output_dropout=0.4,
                # Global params
-               use_cuda=True,
+               device="cuda:0",
                # NCRFpp
                nbest=8):
         encoder = BertBiLSTMEncoder.create(
             bert_config_file, init_checkpoint_pt, embedding_dim, bert_mode, freeze,
-            enc_hidden_dim, rnn_layers, input_dropout, use_cuda)
+            enc_hidden_dim, rnn_layers, input_dropout, device)
         decoder = NCRFDecoder.create(
             label_size, encoder.output_dim, output_dropout, nbest)
-        return cls(encoder, decoder, use_cuda)
+        return cls(encoder, decoder, device)

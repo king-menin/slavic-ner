@@ -14,23 +14,23 @@ class BertEmbedder(nn.Module):
                 "init_checkpoint_pt": self.init_checkpoint_pt,
                 "freeze": self.is_freeze,
                 "embedding_dim": self.embedding_dim,
-                "use_cuda": self.use_cuda
+                "device": self.device
             }
         }
         return config
 
     def __init__(self, model, bert_config_file, init_checkpoint_pt,
-                 freeze=True, embedding_dim=768, use_cuda=True):
+                 freeze=True, embedding_dim=768, device="cuda:0"):
         super(BertEmbedder, self).__init__()
         self.bert_config_file = bert_config_file
         self.init_checkpoint_pt = init_checkpoint_pt
         self.is_freeze = freeze
         self.embedding_dim = embedding_dim
         self.model = model
-        self.use_cuda = use_cuda
+        self.device = device
 
-        if use_cuda:
-            self.cuda()
+        if device:
+            self.cuda(device)
 
     @classmethod
     def from_config(cls, config):
@@ -61,18 +61,12 @@ class BertEmbedder(nn.Module):
 
     @classmethod
     def create(cls,
-               bert_config_file, init_checkpoint_pt, embedding_dim=768, use_cuda=True, freeze=True):
+               bert_config_file, init_checkpoint_pt, embedding_dim=768, device="cuda:0", freeze=True):
         bert_config = bert_modeling.BertConfig.from_json_file(bert_config_file)
         model = bert_modeling.BertModel(bert_config)
-        if use_cuda:
-            device = torch.device("cuda")
-            map_location = "cuda"
-        else:
-            map_location = "cpu"
-            device = torch.device("cpu")
-        model.load_state_dict(torch.load(init_checkpoint_pt, map_location=map_location))
-        model = model.to(device)
-        model = cls(model=model, embedding_dim=embedding_dim, use_cuda=use_cuda,
+        model.load_state_dict(torch.load(init_checkpoint_pt, map_location=device))
+        model = model.to(torch.device(device))
+        model = cls(model=model, embedding_dim=embedding_dim, device=device,
                     bert_config_file=bert_config_file, init_checkpoint_pt=init_checkpoint_pt, freeze=freeze)
         if freeze:
             model.freeze()
@@ -82,19 +76,19 @@ class BertEmbedder(nn.Module):
 class BertBiLSTMEncoder(nn.Module):
 
     def __init__(self, embeddings,
-                 hidden_dim=128, rnn_layers=1, dropout=0.5, use_cuda=True, bert_mode="weighted"):
+                 hidden_dim=128, rnn_layers=1, dropout=0.5, device="cuda:0", bert_mode="weighted"):
         super(BertBiLSTMEncoder, self).__init__()
         self.embeddings = embeddings
         self.hidden_dim = hidden_dim
         self.rnn_layers = rnn_layers
-        self.use_cuda = use_cuda
+        self.device = device
         self.dropout = nn.Dropout(dropout)
         self.lstm = nn.LSTM(
             self.embeddings.embedding_dim,
             hidden_dim // 2,
             rnn_layers, batch_first=True, bidirectional=True)
-        if use_cuda:
-            self.cuda()
+        if device != "cpu":
+            self.cuda(device)
         self.output_dim = hidden_dim
         self.hidden = None
         self.bert_mode = bert_mode
@@ -142,11 +136,11 @@ class BertBiLSTMEncoder(nn.Module):
     @classmethod
     def create(cls, bert_config_file, init_checkpoint_pt, embedding_dim=768,
                bert_mode="weighted", freeze=True,
-               hidden_dim=128, rnn_layers=1, dropout=0.5, use_cuda=True):
+               hidden_dim=128, rnn_layers=1, dropout=0.5, device="cuda:0"):
         if bert_mode not in ["weighted", "last"]:
             raise NotImplemented
         embeddings = BertEmbedder.create(
-            bert_config_file, init_checkpoint_pt, embedding_dim, use_cuda, freeze)
+            bert_config_file, init_checkpoint_pt, embedding_dim, device, freeze)
         model = cls(
-            embeddings, hidden_dim, rnn_layers, dropout, use_cuda=use_cuda, bert_mode=bert_mode)
+            embeddings, hidden_dim, rnn_layers, dropout, device=device, bert_mode=bert_mode)
         return model
