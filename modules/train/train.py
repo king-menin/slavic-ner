@@ -109,7 +109,10 @@ def predict(dl, model, data):
         if data.id2cls is not None:
             preds, preds_cls = preds
             preds_cpu_ = transformed_result_cls([preds_cls], [preds_cls], data.id2cls, False)
-            preds_cpu_cls.extend(preds_cpu_)
+            unsorted_pred = [0] * bs
+            for idx, sidx in enumerate(sorted_idx):
+                unsorted_pred[sidx] = preds_cpu_[idx]
+            preds_cpu_cls.extend(unsorted_pred)
         bs = batch[0].shape[0]
         unsorted_mask = [0] * bs
         unsorted_pred = [0] * bs
