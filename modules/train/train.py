@@ -80,11 +80,14 @@ def validate_step(dl, model, data, sup_labels=None):
     preds_cpu_cls, targets_cpu_cls = [], []
     for batch, _ in tqdm(dl, total=len(dl), leave=False):
         idx += 1
-        labels_mask, labels_ids = batch[-2:]
+        if data.id2cls is not None:
+            labels_mask, labels_ids = batch[-3], batch[-2]
+        else:
+            labels_mask, labels_ids = batch[-2:]
         preds = model.forward(batch)
         if data.id2cls is not None:
             preds, preds_cls = preds
-            preds_cpu_, targets_cpu_ = transformed_result_cls([preds_cls], [batch[-3]], data.id2cls)
+            preds_cpu_, targets_cpu_ = transformed_result_cls([preds_cls], [batch[-1]], data.id2cls)
             preds_cpu_cls.extend(preds_cpu_)
             targets_cpu_cls.extend(targets_cpu_)
         preds_cpu_, targets_cpu_ = transformed_result([preds], [labels_mask], data.id2label, [labels_ids])
