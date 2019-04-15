@@ -109,6 +109,17 @@ class NerDataLoader(DataLoader):
         return res_, sorted_idx
 
 
+def preprocess_text(tokens, labels):
+    res_tokens = []
+    res_labels = []
+    for tok, lbl in zip(tokens, labels):
+        if tok not in ["\ue415", "\ue105", "\uf076", "\u200b", "\x07", "\ue105", '\x97', '\uf076', "\ue405",
+                       "\uf02d"]:
+            res_tokens.append(tok)
+            res_labels.append(lbl)
+    return res_tokens, res_labels
+
+
 class BertNerData(object):
 
     def get_config(self):
@@ -134,7 +145,7 @@ class BertNerData(object):
                  bert_model_type="bert_cased", idx2cls=None, max_seq_len=424,
                  batch_size=16, is_cls=False,
                  idx2label_path=None, idx2cls_path=None, pad="<pad>", device=True, data_columns=["0", "1", "2"],
-                 shuffle=True):
+                 shuffle=True, prc_text=preprocess_text):
         """Store attributes in one cls. For more doc see BertNerData.create"""
         self.train_path = train_path
         self.valid_path = valid_path
@@ -169,6 +180,7 @@ class BertNerData(object):
         self.data_columns = data_columns
 
         self.shuffle = shuffle
+        self.prc_text = prc_text
 
     # TODO: write docs
     @classmethod
@@ -185,7 +197,7 @@ class BertNerData(object):
                max_seq_len=424,
                batch_size=16, is_cls=False,
                idx2label_path=None, idx2cls_path=None, pad="<pad>", device="cuda:0",
-               clear_cache=True, data_columns=["0", "1", "2"], shuffle=True, dir_config=None):
+               clear_cache=True, data_columns=["0", "1", "2"], shuffle=True, dir_config=None, prc_text=preprocess_text):
         """
         Create or skip data loaders, load or create vocabs.
         DataFrame should has 2 or 3 columns. Structure see in data_columns description.
@@ -232,6 +244,9 @@ class BertNerData(object):
             Is shuffle data.
         dir_config : str or None, optional (default=None)
             Dir for store vocabs if paths is not set.
+        prc_text : callable, optional (default=preprocess_text)
+            Function for preprocess text. By default remove some bad unicode words.
+            Note. don't see in word. Remove only full match bad symbol with word.
 
         Returns
         ----------
@@ -270,7 +285,7 @@ class BertNerData(object):
                    bert_model_type=bert_model_type, idx2cls=idx2cls, max_seq_len=max_seq_len,
                    batch_size=batch_size, is_cls=is_cls,
                    idx2label_path=idx2label_path, idx2cls_path=idx2cls_path,
-                   pad=pad, device=device, data_columns=data_columns, shuffle=shuffle)
+                   pad=pad, device=device, data_columns=data_columns, shuffle=shuffle, prc_text=prc_text)
 
         if train_path is not None:
             _ = data.load_train_dl(train_path)
@@ -356,8 +371,7 @@ class BertNerData(object):
             tok_map = []
             bert_tokens.append("[CLS]")
             bert_labels.append("[CLS]")
-            orig_tokens = str(text).split()
-            labels = str(labels).split()
+            orig_tokens, labels = self.prc_text(str(text).split(), str(labels).split())
             pad_idx = label2idx[self.pad]
             assert len(orig_tokens) == len(labels)
             prev_label = ""
