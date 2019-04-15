@@ -18,7 +18,7 @@ class InputFeatures(object):
             # Bert data
             bert_tokens, input_ids, input_mask, input_type_ids,
             # Origin data
-            tokens, labels, labels_ids, labels_mask, cls=None, cls_idx=None):
+            tokens, labels, labels_mask, labels_ids, tok_map, cls=None, cls_idx=None):
         """
         Data has the following structure.
 
@@ -45,6 +45,8 @@ class InputFeatures(object):
         labels_ids : list[int]
             Encoded origin labels.
             Represented at data[4].
+        tok_map : list[int]
+            Map from BERT tokens to origin tokens.
         cls : str or None, optional (default=None)
             If not None cls is label of sample class (used in joint learning).
         cls_idx : int or None, optional (default=None)
@@ -68,6 +70,7 @@ class InputFeatures(object):
         self.data.append(labels_mask)
         self.labels_ids = labels_ids
         self.data.append(labels_ids)
+        self.tok_map = tok_map
         # Used for joint model
         self.cls = cls
         self.cls_idx = cls_idx
@@ -349,35 +352,47 @@ class BertNerData(object):
             else:
                 idx, (text, labels) = args
             bert_tokens = []
-            res_labels = []
+            bert_labels = []
+            tok_map = []
             bert_tokens.append("[CLS]")
-            res_labels.append("[CLS]")
+            bert_labels.append("[CLS]")
             orig_tokens = str(text).split()
             labels = str(labels).split()
             pad_idx = label2idx[self.pad]
             assert len(orig_tokens) == len(labels)
-            args = [orig_tokens, labels]
-            for idx_, ars in enumerate(zip(*args)):
-                orig_token, label = ars[:2]
+            prev_label = ""
+            for idx_, (orig_token, label) in enumerate(zip(orig_tokens, labels)):
+                # Fix BIO to IO as BERT proposed https://arxiv.org/pdf/1810.04805.pdf
+                # TODO: add choosing mode (BIO vs IO)
+                prefix = "B_"
+                if label != "O":
+                    label = label.split("_")[1]
+                    if label == prev_label:
+                        prefix = "I_"
+                    prev_label = label
+                else:
+                    prev_label = label
 
                 cur_tokens = tokenizer.tokenize(orig_token)
                 if self.max_seq_len - 1 < len(bert_tokens) + len(cur_tokens):
-                    logging.info("Error max_seq_len of BERT sequence. Sample skipped: {}".format(args))
                     break
-
+                tok_map.append(len(bert_tokens))
                 bert_tokens.extend(cur_tokens)
-                res_labels.append(label)
+                # ["I_" + label] * (len(cur_tokens) - 1)
+                bert_label = [prefix + label] + ["X"] * (len(cur_tokens) - 1)
+                bert_labels.extend(bert_label)
 
             orig_tokens = ["[CLS]"] + orig_tokens
 
             input_ids = tokenizer.convert_tokens_to_ids(bert_tokens)
-            for l in res_labels:
+            labels = bert_labels
+            for l in labels:
                 if l not in label2idx:
                     label2idx[l] = len(label2idx)
-            labels_ids = [label2idx[l] for l in res_labels]
+            labels_ids = [label2idx[l] for l in labels]
 
             # The mask has 1 for real tokens and 0 for padding tokens. Only real
-            # tokens are attended too.
+            # tokens are attended to.
             input_mask = [1] * len(input_ids)
             labels_mask = [1] * len(labels_ids)
             # Zero-pad up to the sequence length.
@@ -386,10 +401,9 @@ class BertNerData(object):
                 input_mask.append(0)
                 labels_ids.append(pad_idx)
                 labels_mask.append(0)
+                tok_map.append(-1)
+            # assert len(input_ids) == len(bert_labels_ids)
             input_type_ids = [0] * len(input_ids)
-            while len(labels_ids) < self.max_seq_len:
-                labels_ids.append(pad_idx)
-                labels_mask.append(0)
             # For joint model
             cls_idx = None
             if is_cls:
@@ -407,6 +421,7 @@ class BertNerData(object):
                 labels=labels,
                 labels_ids=labels_ids,
                 labels_mask=labels_mask,
+                tok_map=tok_map,
                 # Joint data
                 cls=cls,
                 cls_idx=cls_idx

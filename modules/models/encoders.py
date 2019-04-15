@@ -37,6 +37,10 @@ class BertEmbedder(nn.Module):
         return cls.create(**config)
 
     def forward(self, *batch):
+        # Add eval for disable dropout
+        # Freeze don't work with dropout :(
+        # TODO: add param to BERT directly
+        self.eval()
         input_ids, input_mask, input_type_ids = batch[:3]
         all_encoder_layers, _ = self.model(input_ids, token_type_ids=input_type_ids, attention_mask=input_mask)
         return all_encoder_layers
