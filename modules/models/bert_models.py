@@ -70,7 +70,7 @@ class BertBiLSTMAttnNCRFJoint(NerModel):
 
     def forward(self, batch):
         output, _ = self.encoder(batch)
-        return self.decoder(output, batch[-2])
+        return self.decoder(output, batch[-3])
 
     def score(self, batch):
         output, _ = self.encoder(batch)

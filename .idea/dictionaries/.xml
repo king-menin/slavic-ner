@@ -1,6 +1,7 @@
 <component name="ProjectDictionaryState">
   <dictionary name="пк">
     <words>
+      <w>autograd</w>
       <w>avgpool</w>
       <w>bahdanau</w>
       <w>broadcastable</w>
