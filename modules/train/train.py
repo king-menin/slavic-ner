@@ -1,13 +1,9 @@
 from tqdm import tqdm
-import logging
 import torch
 from .optimization import BertAdam
 import json
 from modules.data.preprocessor import NerDataLoader
 from modules.evaluation.metrics import tokens_scores
-
-
-logging.basicConfig(level=logging.INFO)
 
 
 def train_step(dl, model, optimizer, num_epoch=1):
@@ -26,7 +22,7 @@ def train_step(dl, model, optimizer, num_epoch=1):
         epoch_loss += loss
         pr.set_description("Epoch {}, average train loss: {}".format(num_epoch, epoch_loss / idx))
         torch.cuda.empty_cache()
-    logging.info("\nEpoch {}, average train epoch loss={:.5}\n".format(
+    print("\nEpoch {}, average train epoch loss={:.5}\n".format(
         num_epoch, epoch_loss / idx))
 
 
@@ -201,7 +197,7 @@ class NerLearner(object):
             self.epoch = 0
             self.best_target_metric = 0.
         elif self.verbose:
-            logging.info("Resuming train... Current epoch {}.".format(self.epoch))
+            print("Resuming train... Current epoch {}.".format(self.epoch))
         try:
             for _ in range(epochs):
                 self.epoch += 1
@@ -216,21 +212,21 @@ class NerLearner(object):
                     metrics["epoch"] = self.epoch
                     self.history.append(metrics)
                     if self.verbose:
-                        logging.info("On epoch {} tags {} score: {}".format(
+                        print("On epoch {} tags {} score: {}".format(
                             self.epoch, target_metric, metrics["tags_report"].get(target_metric)))
                         if metrics["cls_report"] is not None:
-                            logging.info("On epoch {} cls {} score: {}".format(
+                            print("On epoch {} cls {} score: {}".format(
                                 self.epoch, target_metric, metrics["cls_report"].get(target_metric)))
                     # Store best model
                     if self.best_target_metric < metrics["tags_report"].get(target_metric):
                         self.best_target_metric = metrics["tags_report"].get(target_metric)
                         if self.verbose:
-                            logging.info("Saving new best model...")
+                            print("Saving new best model...")
                         self.save_model()
                         saved = True
                 if not saved and self.save_every_epoch:
                     if self.verbose:
-                        logging.info("Saving new best model...")
+                        print("Saving new best model...")
                     self.save_model()
         except KeyboardInterrupt:
             pass
