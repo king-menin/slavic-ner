@@ -315,6 +315,8 @@ class BertNerData(object):
     def load_test_dl(self, features):
         if isinstance(features, (str, pd.DataFrame)):
             features, _, _ = self.load_df(features)
+        if not (isinstance(features, list) and isinstance(features[0], InputFeatures)):
+            raise TypeError("features should be of type InputFeatures.")
         self.test_dl = NerDataLoader(
             features, batch_size=self.batch_size, shuffle=self.shuffle, cuda=self.use_cuda)
 
