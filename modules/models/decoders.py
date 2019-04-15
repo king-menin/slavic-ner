@@ -81,7 +81,7 @@ class AttnNCRFJointDecoder(nn.Module):
 class AttnNCRFDecoder(nn.Module):
     def __init__(self,
                  crf, label_size, input_dim, input_dropout=0.5,
-                 key_dim=64, val_dim=64, num_heads=3, nbest=8):
+                 key_dim=64, val_dim=64, num_heads=3, nbest=8, device="cuda:0"):
         super(AttnNCRFDecoder, self).__init__()
         self.input_dim = input_dim
         self.attn = MultiHeadAttention(key_dim, val_dim, input_dim, num_heads, input_dropout)
@@ -91,6 +91,7 @@ class AttnNCRFDecoder(nn.Module):
         self.nbest = nbest
         self.crf = crf
         self.label_size = label_size
+        self.device = device
 
     def forward_model(self, inputs, labels_mask=None):
         batch_size, seq_len, input_dim = inputs.size()
@@ -118,9 +119,9 @@ class AttnNCRFDecoder(nn.Module):
 
     @classmethod
     def create(cls, label_size, input_dim, input_dropout=0.5, key_dim=64,
-               val_dim=64, num_heads=3, device="cuda:0", nbest=8):
+               val_dim=64, num_heads=3, nbest=8, device="cuda:0"):
         return cls(NCRF(label_size, device), label_size + 2, input_dim, input_dropout,
-                   key_dim, val_dim, num_heads, nbest)
+                   key_dim, val_dim, num_heads, nbest, device=device)
 
     
 class NCRFDecoder(nn.Module):

@@ -130,7 +130,7 @@ class BertBiLSTMAttnNCRF(NerModel):
             bert_config_file, init_checkpoint_pt, embedding_dim, bert_mode, freeze,
             enc_hidden_dim, rnn_layers, input_dropout, device)
         decoder = AttnNCRFDecoder.create(
-            label_size, encoder.output_dim, input_dropout, key_dim, val_dim, num_heads, nbest)
+            label_size, encoder.output_dim, input_dropout, key_dim, val_dim, num_heads, nbest, device)
         return cls(encoder, decoder, device)
 
 
