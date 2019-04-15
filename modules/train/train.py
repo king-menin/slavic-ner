@@ -80,22 +80,22 @@ def validate_step(dl, model, data, sup_labels=None):
     preds_cpu_cls, targets_cpu_cls = [], []
     for batch, _ in tqdm(dl, total=len(dl), leave=False):
         idx += 1
-        if data.id2cls is not None:
+        if data.idx2cls is not None:
             labels_mask, labels_ids = batch[-3], batch[-2]
         else:
             labels_mask, labels_ids = batch[-2:]
         preds = model.forward(batch)
-        if data.id2cls is not None:
+        if data.idx2cls is not None:
             preds, preds_cls = preds
-            preds_cpu_, targets_cpu_ = transformed_result_cls([preds_cls], [batch[-1]], data.id2cls)
+            preds_cpu_, targets_cpu_ = transformed_result_cls([preds_cls], [batch[-1]], data.idx2cls)
             preds_cpu_cls.extend(preds_cpu_)
             targets_cpu_cls.extend(targets_cpu_)
-        preds_cpu_, targets_cpu_ = transformed_result([preds], [labels_mask], data.id2label, [labels_ids])
+        preds_cpu_, targets_cpu_ = transformed_result([preds], [labels_mask], data.idx2label, [labels_ids])
         preds_cpu.extend(preds_cpu_)
         targets_cpu.extend(targets_cpu_)
     tags_report = tokens_scores(targets_cpu, preds_cpu, sup_labels)
     cls_report = None
-    if data.id2cls is not None:
+    if data.idx2cls is not None:
         cls_report = tokens_scores([targets_cpu_cls], [preds_cpu_cls])
     return {"tags_report": tags_report, "cls_report": cls_report}
 
@@ -110,9 +110,9 @@ def predict(dl, model, data):
         labels_mask, labels_ids = batch[-2:]
         preds = model.forward(batch)
         bs = batch[0].shape[0]
-        if data.id2cls is not None:
+        if data.idx2cls is not None:
             preds, preds_cls = preds
-            preds_cpu_ = transformed_result_cls([preds_cls], [preds_cls], data.id2cls, False)
+            preds_cpu_ = transformed_result_cls([preds_cls], [preds_cls], data.idx2cls, False)
             unsorted_pred = [0] * bs
             for idx, sidx in enumerate(sorted_idx):
                 unsorted_pred[sidx] = preds_cpu_[idx]
@@ -123,7 +123,7 @@ def predict(dl, model, data):
             unsorted_pred[sidx] = preds[idx]
             unsorted_mask[sidx] = labels_mask[idx]
         
-        preds_cpu_ = transformed_result([unsorted_pred], [unsorted_mask], data.id2label)
+        preds_cpu_ = transformed_result([unsorted_pred], [unsorted_mask], data.idx2label)
         preds_cpu.extend(preds_cpu_)
 
     return {"tags": preds_cpu, "cls": preds_cpu_cls}
@@ -174,7 +174,7 @@ class NerLearner(object):
         self.data = data
         self.e = e
         if sup_labels is None:
-            sup_labels = data.id2label
+            sup_labels = data.idx2label
         self.sup_labels = sup_labels
         self.best_model_path = best_model_path
         self.verbose = verbose
