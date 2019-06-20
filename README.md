@@ -4,32 +4,6 @@
 ## 0. Refer to:
 [nert-bert](https://github.com/sberbank-ai/ner-bert)
 
-<i>(OLD), unused:</i>
-## 1. Loading a TensorFlow checkpoint (e.g. [Google's pre-trained models](https://github.com/google-research/bert#pre-trained-models))
-
-You can convert any TensorFlow checkpoint for BERT (in particular [the pre-trained models released by Google](https://github.com/google-research/bert#pre-trained-models)) in a PyTorch save file by using the [`convert_tf_checkpoint_to_pytorch.py`](convert_tf_checkpoint_to_pytorch.py) script.
-
-This script takes as input a TensorFlow checkpoint (three files starting with `bert_model.ckpt`) and the associated configuration file (`bert_config.json`), and creates a PyTorch model for this configuration, loads the weights from the TensorFlow checkpoint in the PyTorch model and saves the resulting model in a standard PyTorch save file that can be imported using `torch.load()`.
-
-You only need to run this conversion script **once** to get a PyTorch model. You can then disregard the TensorFlow checkpoint (the three files starting with `bert_model.ckpt`) but be sure to keep the configuration file (`bert_config.json`) and the vocabulary file (`vocab.txt`) as these are needed for the PyTorch model too.
-
-To run this specific conversion script you will need to have TensorFlow and PyTorch installed (`pip install tensorflow`). The rest of the repository only requires PyTorch.
-
-Here is an example of the conversion process for a pre-trained `BERT-Base Uncased` model:
-
-```shell
-export BERT_BASE_DIR=/path/to/bert/multilingual_L-12_H-768_A-12
-
-python3 convert_tf_checkpoint_to_pytorch.py \
-    --tf_checkpoint_path $BERT_BASE_DIR/bert_model.ckpt \
-    --bert_config_file $BERT_BASE_DIR/bert_config.json \
-    --pytorch_dump_path $BERT_BASE_DIR/pytorch_model.bin
-```
-
-You can download Google's pre-trained models for the conversion [here](https://github.com/google-research/bert#pre-trained-models).
-
-There is used the [BERT-Cased, Multilingual](https://storage.googleapis.com/bert_models/2018_11_23/multi_cased_L-12_H-768_A-12.zip) (recommended) in this solution.
-
 ## 2. Installation, requirements, test
 
 This code was tested on Python 3.6. The requirements are:
