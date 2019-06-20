@@ -1,9 +1,10 @@
-# The second place solution of AGRR-2019 (full annotation task)
+# Named Entity Recognition for slavic laguages using pretrained embeddings, attention mechanism and NCRF
 # Instructions
 
 ## 0. Refer to:
 [nert-bert](https://github.com/sberbank-ai/ner-bert)
 
+<i>(OLD), unused:</i>
 ## 1. Loading a TensorFlow checkpoint (e.g. [Google's pre-trained models](https://github.com/google-research/bert#pre-trained-models))
 
 You can convert any TensorFlow checkpoint for BERT (in particular [the pre-trained models released by Google](https://github.com/google-research/bert#pre-trained-models)) in a PyTorch save file by using the [`convert_tf_checkpoint_to_pytorch.py`](convert_tf_checkpoint_to_pytorch.py) script.
@@ -44,7 +45,7 @@ pip install -r ./requirements.txt
 ````
 
 ## 3. Usage
-Solution located in notebook [AGRR-2019-full.ipynb](exps/AGRR-2019-full.ipynb).
+Solution located in notebooks: [slavic.ipynb](exps/slavic.ipynb) and [slavic.ipynb](exps/slavic_data_prc.ipynb).
 There are two solutions:
 1. model trained only on train set;
 2. model trained on train and dev set.
