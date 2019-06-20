@@ -3,7 +3,7 @@ import os
 from pathlib import Path
 import pandas as pd
 from tqdm import tqdm
-from modules.utils import if_none
+from modules.utils.utils import if_none
 from collections import defaultdict, Counter
 
 
