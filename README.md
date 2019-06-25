@@ -1,5 +1,7 @@
 ## Named Entity Recognition for slavic laguages using pretrained embeddings, attention mechanism and NCRF
 
+Paper: https://arxiv.org/abs/1906.09978
+
 ### 0. Refer to:
 [nert-bert](https://github.com/sberbank-ai/ner-bert)
 
